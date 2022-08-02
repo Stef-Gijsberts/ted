@@ -41,25 +41,29 @@ fn getByte() !u8 {
     return key;
 }
 
+fn render(bytes: *const std.ArrayList(u8)) !void {
+    const out = std.io.getStdOut();
+
+    // clear screen
+    _ = try out.write("\x1B[1J");
+
+    // Move the cursor to the top left
+    _ = try out.write("\x1B[1;1H");
+
+    // Write the buffer
+    _ = try out.write(bytes.items);
+}
+
 pub fn main() anyerror!void {
     try raw_mode.enter();
     defer raw_mode.exit();
-
-    const out = std.io.getStdOut();
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     var bytes = std.ArrayList(u8).init(gpa.allocator());
     defer bytes.deinit();
 
     while (true) {
-        // clear screen
-        _ = try out.write("\x1B[1J");
-
-        // Move the cursor to the top left
-        _ = try out.write("\x1B[1;1H");
-
-        // Write the buffer
-        _ = try std.io.getStdOut().write(bytes.items);
+        try render(&bytes);
 
         const key = try getByte();
 
