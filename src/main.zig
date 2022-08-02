@@ -59,24 +59,35 @@ fn getKey() !Key {
     }
 }
 
-fn render(bytes: *const std.ArrayList(u8)) !void {
+fn render(bytes: *const std.ArrayList(u8), cursor: usize) !void {
     const out = std.io.getStdOut();
 
-    // clear screen
-    _ = try out.write("\x1B[1J");
+    // Clear the entire screen
+    _ = try out.write("\x1B[2J");
 
     // Move the cursor to the top left
     _ = try out.write("\x1B[1;1H");
 
+    // Save the cursor
+    _ = try out.write("\x1B[s");
+
     // Write the buffer
-    for (bytes.items) |byte| {
+    for (bytes.items) |byte, index| {
         if (byte == '\n') {
             // Replace any '\n' by a '\r\n'
             _ = try out.write("\r\n");
         } else {
             _ = try out.write(&[_]u8{byte});
         }
+
+        if (index + 1 == cursor) {
+            // Save the cursor position
+            _ = try out.write("\x1B[s");
+        }
     }
+
+    // Restore the cursor position
+    _ = try out.write("\x1B[u");
 }
 
 pub fn main() anyerror!void {
@@ -90,7 +101,7 @@ pub fn main() anyerror!void {
     var cursor: usize = 0;
 
     while (true) {
-        try render(&bytes);
+        try render(&bytes, cursor);
 
         const key = try getKey();
 
