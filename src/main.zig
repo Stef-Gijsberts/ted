@@ -32,21 +32,28 @@ const raw_mode = struct {
     }
 };
 
+fn clearScreen() !void {
+    const out = std.io.getStdOut();
+    _ = try out.write("\x1B[1J");
+}
+
+fn getByte() !u8 {
+    const in = std.io.getStdIn();
+
+    var key: u8 = undefined;
+    _ = try in.read(@as(*[1]u8, &key));
+
+    return key;
+}
+
 pub fn main() anyerror!void {
     try raw_mode.enter();
     defer raw_mode.exit();
 
-    const in = std.io.getStdIn();
-    const out = std.io.getStdOut();
-
-    var key: u8 = undefined;
-
     while (true) {
-        // Clear screen
-        _ = try out.write("\x1B[1J");
-        
-        // Read a character
-        _ = try in.read(@as(*[1]u8, &key));
+        try clearScreen();
+
+        const key = try getByte();
 
         // Close when ctrl+c is pressed
         if (key == 3) {
