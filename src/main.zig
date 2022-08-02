@@ -2,6 +2,13 @@ const std = @import("std");
 const os = std.os;
 const linux = std.os.linux;
 
+const Key = union(enum) {
+    backspace,
+    enter,
+    char: u8,
+    ctrl: u8,
+};
+
 const raw_mode = struct {
     var maybe_original: ?os.termios = null;
 
@@ -41,6 +48,24 @@ fn getByte() !u8 {
     return key;
 }
 
+fn getKey() !Key {
+    const byte = try getByte();
+
+    if (byte == 3) {
+        return Key{ .ctrl = 'c' };
+    }
+
+    if (byte == '\r' or byte == '\n') {
+        return Key.enter;
+    }
+
+    if (byte == 127) {
+        return Key.backspace;
+    }
+
+    return Key{ .char = byte };
+}
+
 fn render(bytes: *const std.ArrayList(u8)) !void {
     const out = std.io.getStdOut();
 
@@ -74,26 +99,26 @@ pub fn main() anyerror!void {
     while (true) {
         try render(&bytes);
 
-        const key = try getByte();
+        const key = try getKey();
 
-        // Close if ctrl+c is pressed
-        if (key == 3) {
-            break;
-        }
-        // If the return key is pressed ('\r'), insert a newline
-        else if (key == '\r') {
-            try bytes.insert(cursor, '\n');
-            cursor += 1;
-        }
-        // If DEL is pressed, remove the element just before cursor
-        else if (key == 127) {
-            if (cursor > 0) {
+        switch (key) {
+            Key.ctrl => |char| switch (char) {
+                // break on ctrl+c
+                'c' => break,
+                else => {},
+            },
+            Key.enter => {
+                try bytes.insert(cursor, '\n');
+                cursor += 1;
+            },
+            Key.backspace => {
                 _ = bytes.orderedRemove(cursor - 1);
                 cursor -= 1;
-            }
-        } else {
-            try bytes.insert(cursor, key);
-            cursor += 1;
+            },
+            Key.char => |char| {
+                try bytes.insert(cursor, char);
+                cursor += 1;
+            },
         }
     }
 }
