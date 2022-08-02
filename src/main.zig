@@ -20,7 +20,7 @@ const raw_mode = struct {
         raw.iflag &= ~(linux.BRKINT | linux.ICRNL | linux.INPCK | linux.ISTRIP | linux.IXON);
         raw.oflag &= ~(linux.OPOST);
         raw.cflag |= (linux.CS8);
-        raw.lflag &= (linux.ECHO | linux.ICANON | linux.IEXTEN | linux.ISIG);
+        raw.lflag &= ~(linux.ECHO | linux.ICANON | linux.IEXTEN | linux.ISIG);
 
         try os.tcsetattr(os.STDIN_FILENO, os.TCSA.FLUSH, raw);
     }
