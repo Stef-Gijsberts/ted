@@ -52,9 +52,9 @@ fn getKey() !Key {
     const byte = try getByte();
 
     switch (byte) {
-        3 => return Key{ .ctrl = 'c' },
         '\r', '\n' => return Key.enter,
         127 => return Key.backspace,
+        1...9, 11...12, 14...31 => return Key{ .ctrl = 'a' + byte - 1 },
         else => return Key{ .char = byte },
     }
 }
