@@ -51,7 +51,13 @@ fn render(bytes: *const std.ArrayList(u8)) !void {
     _ = try out.write("\x1B[1;1H");
 
     // Write the buffer
-    _ = try out.write(bytes.items);
+    for (bytes.items) |byte| {
+        if (byte == '\n') {
+            _ = try out.write("\r\n");
+        } else {
+            _ = try out.write(&[_]u8{byte});
+        }
+    }
 }
 
 pub fn main() anyerror!void {
