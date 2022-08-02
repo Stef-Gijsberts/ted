@@ -51,19 +51,12 @@ fn getByte() !u8 {
 fn getKey() !Key {
     const byte = try getByte();
 
-    if (byte == 3) {
-        return Key{ .ctrl = 'c' };
+    switch (byte) {
+        3 => return Key{ .ctrl = 'c' },
+        '\r', '\n' => return Key.enter,
+        127 => return Key.backspace,
+        else => return Key{ .char = byte },
     }
-
-    if (byte == '\r' or byte == '\n') {
-        return Key.enter;
-    }
-
-    if (byte == 127) {
-        return Key.backspace;
-    }
-
-    return Key{ .char = byte };
 }
 
 fn render(bytes: *const std.ArrayList(u8)) !void {
