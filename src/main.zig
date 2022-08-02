@@ -70,25 +70,25 @@ const terminal = struct {
 fn render(bytes: *const std.ArrayList(u8), cursor: usize) !void {
     const out = std.io.getStdOut();
 
-    _ = try out.write(terminal.clear_screen);
-    _ = try out.write(terminal.cursor_goto_top_left);
-    _ = try out.write(terminal.cursor_save);
+    try out.writeAll(terminal.clear_screen);
+    try out.writeAll(terminal.cursor_goto_top_left);
+    try out.writeAll(terminal.cursor_save);
 
     // Write the buffer
     for (bytes.items) |byte, index| {
         if (byte == '\n') {
             // Replace any '\n' by a '\r\n'
-            _ = try out.write("\r\n");
+            try out.writeAll("\r\n");
         } else {
-            _ = try out.write(&[_]u8{byte});
+            try out.writeAll(&[_]u8{byte});
         }
 
         if (index + 1 == cursor) {
-            _ = try out.write(terminal.cursor_save);
+            try out.writeAll(terminal.cursor_save);
         }
     }
 
-    _ = try out.write(terminal.cursor_restore);
+    try out.writeAll(terminal.cursor_restore);
 }
 
 pub fn main() anyerror!void {
