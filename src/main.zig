@@ -105,8 +105,10 @@ pub fn main() anyerror!void {
                 cursor += 1;
             },
             Key.backspace => {
-                _ = bytes.orderedRemove(cursor - 1);
-                cursor -= 1;
+                if (cursor > 0) {
+                    _ = bytes.orderedRemove(cursor - 1);
+                    cursor -= 1;
+                }
             },
             Key.char => |char| {
                 try bytes.insert(cursor, char);
