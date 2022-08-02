@@ -35,4 +35,22 @@ const raw_mode = struct {
 pub fn main() anyerror!void {
     try raw_mode.enter();
     defer raw_mode.exit();
+
+    const in = std.io.getStdIn();
+    const out = std.io.getStdOut();
+
+    var key: [1]u8 = undefined;
+
+    while (true) {
+        // Clear screen
+        _ = try out.write("\x1B[1J");
+        
+        // Read a character
+        _ = try in.read(&key);
+
+        // Close when ctrl+c is pressed
+        if (key[0] == 3) {
+            break;
+        }
+    }
 }
