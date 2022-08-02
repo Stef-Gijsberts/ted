@@ -59,17 +59,20 @@ fn getKey() !Key {
     }
 }
 
+const terminal = struct {
+    const csi = "\x1B[";
+    const clear_screen = csi ++ "2J";
+    const cursor_goto_top_left = csi ++ "1;1H";
+    const cursor_save = csi ++ "s";
+    const cursor_restore = csi ++ "u";
+};
+
 fn render(bytes: *const std.ArrayList(u8), cursor: usize) !void {
     const out = std.io.getStdOut();
 
-    // Clear the entire screen
-    _ = try out.write("\x1B[2J");
-
-    // Move the cursor to the top left
-    _ = try out.write("\x1B[1;1H");
-
-    // Save the cursor
-    _ = try out.write("\x1B[s");
+    _ = try out.write(terminal.clear_screen);
+    _ = try out.write(terminal.cursor_goto_top_left);
+    _ = try out.write(terminal.cursor_save);
 
     // Write the buffer
     for (bytes.items) |byte, index| {
@@ -81,13 +84,11 @@ fn render(bytes: *const std.ArrayList(u8), cursor: usize) !void {
         }
 
         if (index + 1 == cursor) {
-            // Save the cursor position
-            _ = try out.write("\x1B[s");
+            _ = try out.write(terminal.cursor_save);
         }
     }
 
-    // Restore the cursor position
-    _ = try out.write("\x1B[u");
+    _ = try out.write(terminal.cursor_restore);
 }
 
 pub fn main() anyerror!void {
