@@ -68,11 +68,9 @@ const terminal = struct {
 };
 
 fn render(bytes: *const std.ArrayList(u8), cursor: usize) !void {
-    const out = std.io.getStdOut();
+    const out = std.io.getStdOut().writer();
 
-    try out.writeAll(terminal.clear_screen);
-    try out.writeAll(terminal.cursor_goto_top_left);
-    try out.writeAll(terminal.cursor_save);
+    try out.print("{s}{s}{s}", .{ terminal.clear_screen, terminal.cursor_goto_top_left, terminal.cursor_save });
 
     // Write the buffer
     for (bytes.items) |byte, index| {
