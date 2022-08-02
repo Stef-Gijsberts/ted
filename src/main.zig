@@ -71,6 +71,10 @@ pub fn main() anyerror!void {
         if (key == 3) {
             break;
         }
+        // If the return key is pressed ('\r'), insert a newline
+        else if (key == '\r') {
+            try bytes.append('\n');
+        }
         // Remove the last character if DEL is pressed
         else if (key == 127) {
             _ = bytes.pop();
