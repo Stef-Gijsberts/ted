@@ -98,8 +98,12 @@ pub fn main() anyerror!void {
             Key.ctrl => |char| switch (char) {
                 // break on ctrl+c
                 'c' => break,
-                'b' => if (cursor > 0) { cursor -= 1; },
-                'f' => cursor += 1,
+                'b' => if (cursor > 0) {
+                    cursor -= 1;
+                },
+                'f' => if (cursor < bytes.items.len) {
+                    cursor += 1;
+                },
                 else => {},
             },
             Key.enter => {
