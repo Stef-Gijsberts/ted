@@ -67,11 +67,15 @@ pub fn main() anyerror!void {
 
         const key = try getByte();
 
-        // Close when ctrl+c is pressed
+        // Close if ctrl+c is pressed
         if (key == 3) {
             break;
         }
-
-        try bytes.append(key);
+        // Remove the last character if DEL is pressed
+        else if (key == 127) {
+            _ = bytes.pop();
+        } else {
+            try bytes.append(key);
+        }
     }
 }
