@@ -53,6 +53,7 @@ fn render(bytes: *const std.ArrayList(u8)) !void {
     // Write the buffer
     for (bytes.items) |byte| {
         if (byte == '\n') {
+            // Replace any '\n' by a '\r\n'
             _ = try out.write("\r\n");
         } else {
             _ = try out.write(&[_]u8{byte});
@@ -68,6 +69,8 @@ pub fn main() anyerror!void {
     var bytes = std.ArrayList(u8).init(gpa.allocator());
     defer bytes.deinit();
 
+    var cursor: usize = 0;
+
     while (true) {
         try render(&bytes);
 
@@ -79,13 +82,18 @@ pub fn main() anyerror!void {
         }
         // If the return key is pressed ('\r'), insert a newline
         else if (key == '\r') {
-            try bytes.append('\n');
+            try bytes.insert(cursor, '\n');
+            cursor += 1;
         }
-        // Remove the last character if DEL is pressed
+        // If DEL is pressed, remove the element just before cursor
         else if (key == 127) {
-            _ = bytes.pop();
+            if (cursor > 0) {
+                _ = bytes.orderedRemove(cursor - 1);
+                cursor -= 1;
+            }
         } else {
-            try bytes.append(key);
+            try bytes.insert(cursor, key);
+            cursor += 1;
         }
     }
 }
