@@ -136,6 +136,18 @@ fn render(bytes: *const std.ArrayList(u8), cursor: usize) !void {
     try out.writeAll(terminal.cursor_restore);
 }
 
+fn move_cursor_left(cursor: *usize) void {
+    if (cursor.* > 0) {
+        cursor.* -= 1;
+    }
+}
+
+fn move_cursor_right(bytes: *const std.ArrayList(u8), cursor: *usize) void {
+    if (cursor.* < bytes.items.len) {
+        cursor.* += 1;
+    }
+}
+
 pub fn main() anyerror!void {
     try raw_mode.enter();
     defer raw_mode.exit();
@@ -152,25 +164,12 @@ pub fn main() anyerror!void {
         const key = try getKey();
 
         switch (key) {
-            Key.left => {
-                if (cursor > 0) {
-                    cursor -= 1;
-                }
-            },
-            Key.right => {
-                if (cursor < bytes.items.len) {
-                    cursor += 1;
-                }
-            },
+            Key.left => move_cursor_left(&cursor),
+            Key.right => move_cursor_right(&bytes, &cursor),
             Key.ctrl => |char| switch (char) {
-                // break on ctrl+c
                 'c' => break,
-                'b' => if (cursor > 0) {
-                    cursor -= 1;
-                },
-                'f' => if (cursor < bytes.items.len) {
-                    cursor += 1;
-                },
+                'b' => move_cursor_left(&cursor),
+                'f' => move_cursor_right(&bytes, &cursor),
                 else => {},
             },
             Key.enter => {
