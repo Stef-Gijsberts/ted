@@ -148,6 +148,25 @@ fn move_cursor_right(bytes: *const std.ArrayList(u8), cursor: *usize) void {
     }
 }
 
+fn move_cursor_down(bytes: *const std.ArrayList(u8), cursor: *usize) void {
+    // find current column
+    var column: usize = 1;
+    while (cursor.* >= column and bytes.items[cursor.* - column] != '\n') {
+        column += 1;
+    }
+
+    // go to the next newline
+    while (cursor.* < bytes.items.len and bytes.items[cursor.*] != '\n') {
+        cursor.* += 1;
+    }
+
+    if (cursor.* + column <= bytes.items.len) {
+        cursor.* += column;
+    } else {
+        cursor.* = bytes.items.len;
+    }
+}
+
 pub fn main() anyerror!void {
     try raw_mode.enter();
     defer raw_mode.exit();
@@ -170,6 +189,7 @@ pub fn main() anyerror!void {
                 'c' => break,
                 'b' => move_cursor_left(&cursor),
                 'f' => move_cursor_right(&bytes, &cursor),
+                'n' => move_cursor_down(&bytes, &cursor),
                 else => {},
             },
             Key.enter => {
