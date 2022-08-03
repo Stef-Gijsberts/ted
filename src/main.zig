@@ -2,6 +2,10 @@ const std = @import("std");
 const os = std.os;
 const linux = std.os.linux;
 
+const c = @cImport({
+    @cInclude("termios.h");
+});
+
 const Key = union(enum) {
     backspace,
     enter,
@@ -29,6 +33,13 @@ const raw_mode = struct {
         raw.cflag |= (linux.CS8);
         raw.lflag &= ~(linux.ECHO | linux.ICANON | linux.IEXTEN | linux.ISIG);
 
+        // The minimum number of bytes of input before read() can return
+        raw.cc[c.VMIN] = 0;
+
+        // The maximum amount of time in deciseconds (100ms) to wait before
+        // read() returns.
+        raw.cc[c.VTIME] = 1;
+
         try os.tcsetattr(os.STDIN_FILENO, os.TCSA.FLUSH, raw);
     }
 
@@ -39,13 +50,28 @@ const raw_mode = struct {
     }
 };
 
-fn getByte() !u8 {
+fn pollByte() !?u8 {
     const in = std.io.getStdIn();
 
     var key: u8 = undefined;
-    _ = try in.read(@as(*[1]u8, &key));
+
+    const num_bytes_read = try in.read(@as(*[1]u8, &key));
+
+    if (num_bytes_read == 0) {
+        return null;
+    }
 
     return key;
+}
+
+fn getByte() !u8 {
+    while (true) {
+        const maybe_byte = try pollByte();
+
+        if (maybe_byte) |byte| {
+            return byte;
+        }
+    }
 }
 
 fn getKey() !Key {
