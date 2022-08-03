@@ -9,6 +9,11 @@ const c = @cImport({
 const Key = union(enum) {
     backspace,
     enter,
+    escape,
+    up,
+    left,
+    down,
+    right,
     char: u8,
     ctrl: u8,
 };
@@ -80,7 +85,23 @@ fn getKey() !Key {
     switch (byte) {
         '\r', '\n' => return Key.enter,
         127 => return Key.backspace,
-        1...9, 11...12, 14...31 => return Key{ .ctrl = 'a' + byte - 1 },
+        1...9, 11...12, 14...26, 28...31 => return Key{ .ctrl = 'a' + byte - 1 },
+        '\x1B' => {
+            const byte2 = (try pollByte()) orelse return Key.escape;
+            const byte3 = (try pollByte()) orelse return Key.escape;
+
+            if (byte2 == '[') {
+                switch (byte3) {
+                    'A' => return Key.up,
+                    'B' => return Key.down,
+                    'C' => return Key.right,
+                    'D' => return Key.left,
+                    else => return Key.escape,
+                }
+            }
+
+            return Key.escape;
+        },
         else => return Key{ .char = byte },
     }
 }
@@ -131,6 +152,16 @@ pub fn main() anyerror!void {
         const key = try getKey();
 
         switch (key) {
+            Key.left => {
+                if (cursor > 0) {
+                    cursor -= 1;
+                }
+            },
+            Key.right => {
+                if (cursor < bytes.items.len) {
+                    cursor += 1;
+                }
+            },
             Key.ctrl => |char| switch (char) {
                 // break on ctrl+c
                 'c' => break,
@@ -156,6 +187,7 @@ pub fn main() anyerror!void {
                 try bytes.insert(cursor, char);
                 cursor += 1;
             },
+            else => {},
         }
     }
 }
