@@ -21,6 +21,8 @@ const Key = union(enum) {
 const Command = union(enum) {
     cursor_move_forwards,
     cursor_move_backwards,
+    cursor_move_next,
+    cursor_move_previous,
     cursor_goto_line_start,
     cursor_goto_line_end,
     insert: u8,
@@ -124,8 +126,12 @@ fn getCommand() !Command {
             Key.enter => return Command{ .insert = '\n' },
             Key.left => return Command.cursor_move_backwards,
             Key.right => return Command.cursor_move_forwards,
+            Key.up => return Command.cursor_move_previous,
+            Key.down => return Command.cursor_move_next,
             Key.ctrl => |char| switch (char) {
                 'c' => return Command.exit,
+                'p' => return Command.cursor_move_previous,
+                'n' => return Command.cursor_move_next,
                 'f' => return Command.cursor_move_forwards,
                 'b' => return Command.cursor_move_backwards,
                 'a' => return Command.cursor_goto_line_start,
@@ -134,7 +140,7 @@ fn getCommand() !Command {
             },
             Key.backspace => return Command.remove,
             Key.char => |char| return Command{ .insert = char },
-            Key.escape, Key.up, Key.down => {},
+            Key.escape => {},
         }
     }
 }
@@ -235,6 +241,63 @@ pub fn main() anyerror!void {
             },
             Command.cursor_move_forwards => {
                 if (cursor < sequence.len()) {
+                    cursor += 1;
+                }
+            },
+            Command.cursor_move_next => {
+                // Go to the start of the line, while keeping track of how many
+                // steps that took. That amount of steps is the current column.
+                var column: isize = 0;
+                while ((sequence.get(cursor - 1) orelse '\n') != '\n') {
+                    cursor -= 1;
+                    column += 1;
+                }
+
+                // Go to the end of the line.
+                while ((sequence.get(cursor) orelse '\n') != '\n') {
+                    cursor += 1;
+                }
+
+                // If we are at the end of the buffer now, then just stop.
+                if (cursor == sequence.len()) {
+                    continue;
+                }
+
+                // Go to the start of the next line.
+                cursor += 1;
+
+                // Finally, we move forwards again, based on the column.
+                while (column > 0 and (sequence.get(cursor) orelse '\n') != '\n') {
+                    column -= 1;
+                    cursor += 1;
+                }
+            },
+            Command.cursor_move_previous => {
+                // Go to the start of the line, while keeping track of how many
+                // steps that took. That amount of steps is the current column.
+                var column: isize = 0;
+                while ((sequence.get(cursor - 1) orelse '\n') != '\n') {
+                    cursor -= 1;
+                    column += 1;
+                }
+
+                // If the cursor is now zero, we started on the first line, so
+                // stop here.
+                if (cursor == 0) {
+                    continue;
+                }
+
+                // Go to the end of the previous line.
+                cursor -= 1;
+
+                // Go to the start of the previous line.
+                while ((sequence.get(cursor - 1) orelse '\n') != '\n') {
+                    cursor -= 1;
+                }
+
+                // Finally, we move forwards again, based on the column.
+                while (column > 0 and (sequence.get(cursor) orelse '\n') != '\n') {
+                    column -= 1;
                     cursor += 1;
                 }
             },
