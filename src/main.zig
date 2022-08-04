@@ -18,6 +18,14 @@ const Key = union(enum) {
     ctrl: u8,
 };
 
+const Command = union(enum) {
+    cursor_move_left,
+    cursor_move_right,
+    insert_before_cursor: u8,
+    delete_before_cursor,
+    exit,
+};
+
 const raw_mode = struct {
     var maybe_original: ?os.termios = null;
 
@@ -106,6 +114,25 @@ fn getKey() !Key {
     }
 }
 
+fn getCommand() !Command {
+    while (true) {
+        const key = try getKey();
+
+        switch (key) {
+            Key.enter => return Command{ .insert_before_cursor = '\n' },
+            Key.left => return Command.cursor_move_left,
+            Key.right => return Command.cursor_move_right,
+            Key.ctrl => |char| switch (char) {
+                'c' => return Command.exit,
+                else => {},
+            },
+            Key.backspace => return Command.delete_before_cursor,
+            Key.char => |char| return Command{ .insert_before_cursor = char },
+            Key.escape, Key.up, Key.down => {},
+        }
+    }
+}
+
 const terminal = struct {
     const csi = "\x1B[";
     const clear_screen = csi ++ "2J";
@@ -136,37 +163,6 @@ fn render(bytes: *const std.ArrayList(u8), cursor: usize) !void {
     try out.writeAll(terminal.cursor_restore);
 }
 
-fn move_cursor_left(cursor: *usize) void {
-    if (cursor.* > 0) {
-        cursor.* -= 1;
-    }
-}
-
-fn move_cursor_right(bytes: *const std.ArrayList(u8), cursor: *usize) void {
-    if (cursor.* < bytes.items.len) {
-        cursor.* += 1;
-    }
-}
-
-fn move_cursor_down(bytes: *const std.ArrayList(u8), cursor: *usize) void {
-    // find current column
-    var column: usize = 1;
-    while (cursor.* >= column and bytes.items[cursor.* - column] != '\n') {
-        column += 1;
-    }
-
-    // go to the next newline
-    while (cursor.* < bytes.items.len and bytes.items[cursor.*] != '\n') {
-        cursor.* += 1;
-    }
-
-    if (cursor.* + column <= bytes.items.len) {
-        cursor.* += column;
-    } else {
-        cursor.* = bytes.items.len;
-    }
-}
-
 pub fn main() anyerror!void {
     try raw_mode.enter();
     defer raw_mode.exit();
@@ -180,33 +176,30 @@ pub fn main() anyerror!void {
     while (true) {
         try render(&bytes, cursor);
 
-        const key = try getKey();
+        const command = try getCommand();
 
-        switch (key) {
-            Key.left => move_cursor_left(&cursor),
-            Key.right => move_cursor_right(&bytes, &cursor),
-            Key.ctrl => |char| switch (char) {
-                'c' => break,
-                'b' => move_cursor_left(&cursor),
-                'f' => move_cursor_right(&bytes, &cursor),
-                'n' => move_cursor_down(&bytes, &cursor),
-                else => {},
+        switch (command) {
+            Command.cursor_move_left => {
+                if (cursor > 0) {
+                    cursor -= 1;
+                }
             },
-            Key.enter => {
-                try bytes.insert(cursor, '\n');
+            Command.cursor_move_right => {
+                if (cursor < bytes.items.len) {
+                    cursor += 1;
+                }
+            },
+            Command.insert_before_cursor => |char| {
+                try bytes.insert(cursor, char);
                 cursor += 1;
             },
-            Key.backspace => {
+            Command.delete_before_cursor => {
                 if (cursor > 0) {
                     _ = bytes.orderedRemove(cursor - 1);
                     cursor -= 1;
                 }
             },
-            Key.char => |char| {
-                try bytes.insert(cursor, char);
-                cursor += 1;
-            },
-            else => {},
+            Command.exit => break,
         }
     }
 }
