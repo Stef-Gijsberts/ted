@@ -188,11 +188,7 @@ const Sequence = struct {
     }
 
     fn get(self: *const Self, pos: isize) ?u8 {
-        if (pos < 0) {
-            return null;
-        }
-
-        if (pos >= self.bytes.items.len) {
+        if (pos < 0 or pos >= self.bytes.items.len) {
             return null;
         }
 
@@ -200,11 +196,7 @@ const Sequence = struct {
     }
 
     fn insert(self: *Self, pos: isize, byte: u8) !void {
-        if (pos < 0) {
-            return error.position_out_of_range;
-        }
-
-        if (pos > self.bytes.items.len) {
+        if (pos < 0 or pos > self.bytes.items.len) {
             return error.position_out_of_range;
         }
 
@@ -212,11 +204,7 @@ const Sequence = struct {
     }
 
     fn remove(self: *Self, pos: isize) !void {
-        if (pos < 0) {
-            return error.position_out_of_range;
-        }
-
-        if (pos > self.bytes.items.len) {
+        if (pos < 0 or pos > self.bytes.items.len) {
             return error.position_out_of_range;
         }
 
