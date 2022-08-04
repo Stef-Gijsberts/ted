@@ -23,8 +23,8 @@ const Command = union(enum) {
     cursor_move_backwards,
     cursor_goto_line_start,
     cursor_goto_line_end,
-    insert_before_cursor: u8,
-    delete_before_cursor,
+    insert: u8,
+    remove,
     exit,
 };
 
@@ -121,7 +121,7 @@ fn getCommand() !Command {
         const key = try getKey();
 
         switch (key) {
-            Key.enter => return Command{ .insert_before_cursor = '\n' },
+            Key.enter => return Command{ .insert = '\n' },
             Key.left => return Command.cursor_move_backwards,
             Key.right => return Command.cursor_move_forwards,
             Key.ctrl => |char| switch (char) {
@@ -132,8 +132,8 @@ fn getCommand() !Command {
                 'e' => return Command.cursor_goto_line_end,
                 else => {},
             },
-            Key.backspace => return Command.delete_before_cursor,
-            Key.char => |char| return Command{ .insert_before_cursor = char },
+            Key.backspace => return Command.remove,
+            Key.char => |char| return Command{ .insert = char },
             Key.escape, Key.up, Key.down => {},
         }
     }
@@ -248,11 +248,11 @@ pub fn main() anyerror!void {
                     cursor += 1;
                 }
             },
-            Command.insert_before_cursor => |char| {
+            Command.insert => |char| {
                 try sequence.insert(cursor, char);
                 cursor += 1;
             },
-            Command.delete_before_cursor => {
+            Command.remove => {
                 if (cursor > 0) {
                     try sequence.remove(cursor - 1);
                     cursor -= 1;
