@@ -147,13 +147,13 @@ const terminal = struct {
     const cursor_restore = csi ++ "u";
 };
 
-fn render(bytes: *const std.ArrayList(u8), cursor: usize) !void {
+fn render(sequence: *const Sequence, cursor: isize) !void {
     const out = std.io.getStdOut().writer();
 
     try out.print("{s}{s}{s}", .{ terminal.clear_screen, terminal.cursor_goto_top_left, terminal.cursor_save });
 
     // Write the buffer
-    for (bytes.items) |byte, index| {
+    for (sequence.bytes.items) |byte, index| {
         if (byte == '\n') {
             // Replace any '\n' by a '\r\n'
             try out.writeAll("\r\n");
@@ -169,18 +169,73 @@ fn render(bytes: *const std.ArrayList(u8), cursor: usize) !void {
     try out.writeAll(terminal.cursor_restore);
 }
 
+const Sequence = struct {
+    const Self = @This();
+    bytes: std.ArrayList(u8),
+
+    fn init(allocator: std.mem.Allocator) Self {
+        return Self{
+            .bytes = std.ArrayList(u8).init(allocator),
+        };
+    }
+
+    fn deinit(self: Self) void {
+        self.bytes.deinit();
+    }
+
+    fn len(self: *const Self) isize {
+        return @intCast(isize, self.bytes.items.len);
+    }
+
+    fn get(self: *const Self, pos: isize) ?u8 {
+        if (pos < 0) {
+            return null;
+        }
+
+        if (pos >= self.bytes.items.len) {
+            return null;
+        }
+
+        return self.bytes.items[@intCast(usize, pos)];
+    }
+
+    fn insert(self: *Self, pos: isize, byte: u8) !void {
+        if (pos < 0) {
+            return error.position_out_of_range;
+        }
+
+        if (pos > self.bytes.items.len) {
+            return error.position_out_of_range;
+        }
+
+        try self.bytes.insert(@intCast(usize, pos), byte);
+    }
+
+    fn remove(self: *Self, pos: isize) !void {
+        if (pos < 0) {
+            return error.position_out_of_range;
+        }
+
+        if (pos > self.bytes.items.len) {
+            return error.position_out_of_range;
+        }
+
+        _ = self.bytes.orderedRemove(@intCast(usize, pos));
+    }
+};
+
 pub fn main() anyerror!void {
     try raw_mode.enter();
     defer raw_mode.exit();
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    var bytes = std.ArrayList(u8).init(gpa.allocator());
-    defer bytes.deinit();
+    var sequence = Sequence.init(gpa.allocator());
+    defer sequence.deinit();
 
-    var cursor: usize = 0;
+    var cursor: isize = 0;
 
     while (true) {
-        try render(&bytes, cursor);
+        try render(&sequence, cursor);
 
         const command = try getCommand();
 
@@ -191,27 +246,27 @@ pub fn main() anyerror!void {
                 }
             },
             Command.cursor_move_forwards => {
-                if (cursor < bytes.items.len) {
+                if (cursor < sequence.len()) {
                     cursor += 1;
                 }
             },
             Command.cursor_goto_line_start => {
-                while (cursor > 0 and bytes.items[cursor-1] != '\n') {
+                while ((sequence.get(cursor - 1) orelse '\n') != '\n') {
                     cursor -= 1;
                 }
             },
             Command.cursor_goto_line_end => {
-                while (cursor < bytes.items.len and bytes.items[cursor] != '\n') {
+                while ((sequence.get(cursor) orelse '\n') != '\n') {
                     cursor += 1;
                 }
             },
             Command.insert_before_cursor => |char| {
-                try bytes.insert(cursor, char);
+                try sequence.insert(cursor, char);
                 cursor += 1;
             },
             Command.delete_before_cursor => {
                 if (cursor > 0) {
-                    _ = bytes.orderedRemove(cursor - 1);
+                    try sequence.remove(cursor - 1);
                     cursor -= 1;
                 }
             },
