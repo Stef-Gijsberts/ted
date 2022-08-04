@@ -19,8 +19,8 @@ const Key = union(enum) {
 };
 
 const Command = union(enum) {
-    cursor_move_left,
-    cursor_move_right,
+    cursor_move_forwards,
+    cursor_move_backwards,
     insert_before_cursor: u8,
     delete_before_cursor,
     exit,
@@ -120,8 +120,8 @@ fn getCommand() !Command {
 
         switch (key) {
             Key.enter => return Command{ .insert_before_cursor = '\n' },
-            Key.left => return Command.cursor_move_left,
-            Key.right => return Command.cursor_move_right,
+            Key.left => return Command.cursor_move_backwards,
+            Key.right => return Command.cursor_move_forwards,
             Key.ctrl => |char| switch (char) {
                 'c' => return Command.exit,
                 else => {},
@@ -179,12 +179,12 @@ pub fn main() anyerror!void {
         const command = try getCommand();
 
         switch (command) {
-            Command.cursor_move_left => {
+            Command.cursor_move_backwards => {
                 if (cursor > 0) {
                     cursor -= 1;
                 }
             },
-            Command.cursor_move_right => {
+            Command.cursor_move_forwards => {
                 if (cursor < bytes.items.len) {
                     cursor += 1;
                 }
